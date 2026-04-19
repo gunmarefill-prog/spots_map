@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refillぐんま 給水マップ</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { --refill-blue: #87CEEB; }
+        body { margin: 0; font-family: sans-serif; }
+        #map { height: 70vh; width: 100%; }
+        .controls { padding: 10px; background: #f9f9f9; border-bottom: 2px solid var(--refill-blue); }
+        .counter { font-weight: bold; color: #333; }
+        .alert-marker { filter: hue-rotate(140deg) brightness(0.8); } /* 再調査用カラー */
+        .header { background: var(--refill-blue); color: white; padding: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Refillぐんま 給水マップ</h1>
+    <div id="summary" class="counter">スポット数: 読み込み中...</div>
+</div>
+
+<div class="controls">
+    <select id="filter-category" onchange="updateMarkers()">
+        <option value="all">すべてのカテゴリー</option>
+        <option value="公共">公共施設</option>
+        <option value="飲食店">飲食店</option>
+        <option value="協力店">マイ容器協力店</option>
+    </select>
+</div>
+
+<div id="map"></div>
+
+<div style="padding: 20px;">
+    <h3>新規スポット登録 (スマホ位置情報利用)</h3>
+    <button onclick="getLocation()">現在地を取得</button>
+    <input type="password" id="post-password" placeholder="管理用パスワード">
+    <button onclick="submitData()">登録する(GASへ送信)</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const GAS_URL = 'YOUR_GAS_DEPLOY_URL'; // GASのURLを入れてください
+    let map, markers = [], allData = [];
+
+    // マップ初期化
+    map = L.map('map').setView([36.3895, 139.0634], 11); // 群馬県庁中心
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // データ読み込み
+    async function loadData() {
+        const response = await fetch(GAS_URL);
+        allData = await response.json();
+        updateMarkers();
+    }
+
+    function updateMarkers() {
+        const category = document.getElementById('filter-category').value;
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        const filtered = allData.filter(d => category === 'all' || d.category === category);
+        document.getElementById('summary').innerText = `スポット数: ${filtered.length}件`;
+
+        filtered.forEach(d => {
+            const marker = L.marker([d.lat, d.lng]).addTo(map);
+            let popupContent = `<b>${d.name}</b><br>${d.category}<br>方法: ${d.method}`;
+            
+            // 3年経過アラート
+            if(d.needs_survey) {
+                popupContent += `<br><span style="color:red;">⚠️要再調査(3年経過)</span>`;
+            }
+            
+            marker.bindPopup(popupContent);
+            markers.push(marker);
+        });
+    }
+
+    // 住所から緯度経度変換 (東京大学CSIS API等の実装イメージ)
+    async function addressMatching(address) {
+        // ここにAPIリクエストを記述
+        // 例: fetch(`https://geocode.csis.u-tokyo.ac.jp/cgi-bin/simple_geocode.cgi?addr=${address}`)
+    }
+
+    loadData();
+</script>
+</body>
+</html>
