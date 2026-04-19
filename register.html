@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refillぐんま 収集アプリ</title>
+    <style>
+        :root { --refill-blue: #87CEEB; --dark-blue: #5f9ea0; }
+        body { font-family: sans-serif; margin: 0; background-color: #f0f8ff; color: #333; }
+        .header { background: var(--refill-blue); color: white; padding: 15px; text-align: center; font-weight: bold; }
+        .container { padding: 20px; max-width: 500px; margin: auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 0.9em; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .btn { background: var(--refill-blue); color: white; border: none; padding: 12px; border-radius: 5px; width: 100%; font-size: 1em; cursor: pointer; margin-top: 10px; }
+        .btn:active { background: var(--dark-blue); }
+        .btn-secondary { background: #999; margin-top: 5px; }
+        #status { margin-top: 15px; padding: 10px; border-radius: 5px; display: none; text-align: center; }
+        .location-box { background: #fff; border: 1px dashed var(--refill-blue); padding: 10px; margin-bottom: 10px; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+<div class="header">Refillぐんま データ収集</div>
+
+<div class="container">
+    <div class="form-group">
+        <label>パスワード</label>
+        <input type="password" id="password" placeholder="管理用パスワードを入力">
+    </div>
+
+    <hr>
+
+    <div class="form-group">
+        <label>カテゴリー</label>
+        <select id="category">
+            <option value="公共">公共施設の給水所</option>
+            <option value="飲食店">飲食店（協力店）</option>
+            <option value="協力店">マイ容器協力店</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>スポット名</label>
+        <input type="text" id="name" placeholder="例：〇〇公園、△△カフェ">
+    </div>
+
+    <div class="form-group">
+        <label>住所</label>
+        <input type="text" id="address" placeholder="群馬県前橋市...">
+        <button class="btn btn-secondary" onclick="addressMatching()">住所から座標を取得</button>
+    </div>
+
+    <div class="location-box">
+        座標: <span id="latlng_display">未取得</span>
+        <button class="btn btn-secondary" style="width: auto; padding: 5px 10px;" onclick="getGPS()">現在地(GPS)を取得</button>
+    </div>
+
+    <div class="form-group">
+        <label>利用可能時間 / 営業時間</label>
+        <input type="text" id="hours" placeholder="例：9:00 - 17:00">
+    </div>
+
+    <div class="form-group">
+        <label>定休日</label>
+        <input type="text" id="closed" placeholder="例：月曜日、第3日曜日">
+    </div>
+
+    <div class="form-group">
+        <label>お水の提供方法</label>
+        <select id="method">
+            <option value="蛇口">蛇口（直接）</option>
+            <option value="常温サーバー">常温サーバー</option>
+            <option value="冷水機">冷水機</option>
+            <option value="スタッフによる提供">スタッフによる提供</option>
+        </select>
+    </div>
+
+    <button class="btn" onclick="submitToGas()">Refill Japan形式で登録</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycby8FtNm2CazLkI1JbGQ3lJ2N4STl2PxkcgPLk9LbfAgnhOl0f9y3wrEcUM24GlF4erGXw/exec'; // デプロイしたGASのURL
+    let currentLat = "";
+    let currentLng = "";
+
+    // GPS取得
+    function getGPS() {
+        if (!navigator.geolocation) return alert("GPSが使えません");
+        navigator.geolocation.getCurrentPosition(pos => {
+            currentLat = pos.coords.latitude;
+            currentLng = pos.coords.longitude;
+            document.getElementById('latlng_display').innerText = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+        }, () => alert("位置情報の取得に失敗しました"));
+    }
+
+    // 東京大学CSIS アドレスマッチングAPIの利用
+    async function addressMatching() {
+        const addr = document.getElementById('address').value;
+        if (!addr) return alert("住所を入力してください");
+        
+        try {
+            // 注意: 実際にはCORS回避のためGAS経由で叩くか、プロキシを通すのが一般的です
+            const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(addr)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            if (data && data.length > 0) {
+                currentLng = data[0].geometry.coordinates[0];
+                currentLat = data[0].geometry.coordinates[1];
+                document.getElementById('latlng_display').innerText = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)} (住所から取得)`;
+            } else {
+                alert("住所が見つかりませんでした");
+            }
+        } catch (e) {
+            alert("エラーが発生しました。手動でGPS取得を試してください。");
+        }
+    }
+
+    // GASへ送信
+    async function submitToGas() {
+        const statusDiv = document.getElementById('status');
+        const payload = {
+            password: document.getElementById('password').value,
+            category: document.getElementById('category').value,
+            name: document.getElementById('name').value,
+            address: document.getElementById('address').value,
+            lat: currentLat,
+            lng: currentLng,
+            hours: document.getElementById('hours').value,
+            closed: document.getElementById('closed').value,
+            method: document.getElementById('method').value
+        };
+
+        if (!payload.lat || !payload.name) return alert("スポット名と位置情報は必須です");
+
+        statusDiv.style.display = "block";
+        statusDiv.innerText = "送信中...";
+        statusDiv.style.backgroundColor = "#eee";
+
+        try {
+            const response = await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                statusDiv.innerText = "登録完了！RefillJapanへ送信しました。";
+                statusDiv.style.backgroundColor = "#d4edda";
+                // フォームリセット
+                document.getElementById('name').value = "";
+            } else {
+                statusDiv.innerText = "エラー: " + result.message;
+                statusDiv.style.backgroundColor = "#f8d7da";
+            }
+        } catch (e) {
+            statusDiv.innerText = "通信エラーが発生しました";
+            statusDiv.style.backgroundColor = "#f8d7da";
+        }
+    }
+</script>
+
+</body>
+</html>
