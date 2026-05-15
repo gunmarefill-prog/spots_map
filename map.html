@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refillぐんま 給水マップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root {
+  --water-deep: #0077B6;
+  --water-mid:  #00B4D8;
+  --water-light:#90E0EF;
+  --water-pale: #CAF0F8;
+  --water-foam: #EAF8FD;
+  --accent:     #FF6B6B;
+  --gold:       #FFB703;
+  --green:      #52B788;
+  --text-dark:  #023E58;
+  --text-mid:   #4A7A8A;
+  --text-light: #8AAABB;
+  --white:      #FFFFFF;
+  --shadow-soft: 0 4px 20px rgba(0,119,182,0.15);
+  --shadow-mid:  0 8px 32px rgba(0,119,182,0.22);
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--water-foam);
+  color: var(--text-dark);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── HEADER ─── */
+header {
+  background: linear-gradient(135deg, var(--water-deep) 0%, var(--water-mid) 100%);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 16px rgba(0,119,182,0.35);
+  z-index: 1000;
+  flex-shrink: 0;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 40px; height: 40px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+.logo-text {
+  font-family: 'Outfit', sans-serif;
+  color: white;
+  line-height: 1.1;
+}
+.logo-text .main { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+.logo-text .sub  { font-size: 10px; font-weight: 300; opacity: 0.85; letter-spacing: 1px; }
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-header {
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: white;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-header:hover { background: rgba(255,255,255,0.3); transform: translateY(-1px); }
+.btn-header.primary {
+  background: white;
+  color: var(--water-deep);
+  font-weight: 700;
+}
+.btn-header.primary:hover { background: var(--water-pale); }
+
+/* ─── STATS BAR ─── */
+.stats-bar {
+  background: white;
+  border-bottom: 1px solid var(--water-pale);
+  padding: 8px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  overflow-x: auto;
+  flex-shrink: 0;
+  z-index: 999;
+}
+
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--water-foam);
+  border: 1.5px solid var(--water-light);
+  border-radius: 20px;
+  padding: 5px 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.stat-pill:hover, .stat-pill.active { 
+  background: var(--water-mid); 
+  border-color: var(--water-mid);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0,180,216,0.35);
+}
+.stat-pill.active .stat-icon, .stat-pill:hover .stat-icon { filter: brightness(10); }
+.stat-pill .stat-icon { font-size: 16px; }
+.stat-pill .stat-label { font-size: 11px; color: var(--text-mid); }
+.stat-pill.active .stat-label, .stat-pill:hover .stat-label { color: rgba(255,255,255,0.9); }
+.stat-pill .stat-count {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--water-deep);
+  min-width: 20px;
+}
+.stat-pill.active .stat-count, .stat-pill:hover .stat-count { color: white; }
+
+.stat-pill.all { border-color: var(--water-deep); }
+.stat-pill.public-water { border-color: #0096c7; }
+.stat-pill.shop { border-color: var(--green); }
+.stat-pill.byoc { border-color: var(--gold); }
+.stat-pill.review { border-color: var(--accent); }
+
+/* ─── MAIN LAYOUT ─── */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── MAP ─── */
+#map {
+  flex: 1;
+  z-index: 1;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 340px;
+  background: white;
+  border-left: 1px solid var(--water-pale);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: -4px 0 20px rgba(0,119,182,0.08);
+  z-index: 2;
+}
+
+.sidebar-header {
+  padding: 16px 18px;
+  background: linear-gradient(135deg, var(--water-foam), white);
+  border-bottom: 1px solid var(--water-pale);
+  flex-shrink: 0;
+}
+
+.sidebar-header h3 {
+  font-size: 13px;
+  color: var(--text-mid);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.search-box {
+  position: relative;
+}
+.search-box input {
+  width: 100%;
+  padding: 9px 36px 9px 12px;
+  border: 1.5px solid var(--water-light);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--water-foam);
+  color: var(--text-dark);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-box input:focus { border-color: var(--water-mid); background: white; }
+.search-box .search-icon {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--text-light); font-size: 14px;
+}
+
+.spot-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+.spot-list::-webkit-scrollbar { width: 4px; }
+.spot-list::-webkit-scrollbar-thumb { background: var(--water-light); border-radius: 2px; }
+
+.spot-card {
+  background: var(--water-foam);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-md);
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.spot-card:hover {
+  border-color: var(--water-mid);
+  background: white;
+  box-shadow: var(--shadow-soft);
+  transform: translateX(-2px);
+}
+.spot-card.selected {
+  border-color: var(--water-deep);
+  background: white;
+  box-shadow: var(--shadow-mid);
+}
+
+.spot-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.spot-badge {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.badge-public { background: #e0f3ff; }
+.badge-shop   { background: #e8f8ef; }
+.badge-byoc   { background: #fff8e0; }
+
+.spot-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-dark);
+  flex: 1;
+  line-height: 1.3;
+}
+
+.spot-type-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.tag-public { background: #d0eeff; color: #0077B6; }
+.tag-shop   { background: #d5f5e8; color: #1a7a50; }
+.tag-byoc   { background: #fff3cd; color: #9a6000; }
+
+.spot-address {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-left: 42px;
+}
+
+.spot-review-badge {
+  font-size: 10px;
+  color: var(--accent);
+  margin-left: 42px;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── POPUP CUSTOM ─── */
+.leaflet-popup-content-wrapper {
+  border-radius: var(--r-md) !important;
+  box-shadow: var(--shadow-mid) !important;
+  border: 1.5px solid var(--water-light) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+.leaflet-popup-content { margin: 0 !important; width: 260px !important; }
+.leaflet-popup-tip-container { display: none; }
+
+.popup-inner { padding: 16px; }
+.popup-cat-bar {
+  height: 4px;
+  border-radius: 0;
+  margin: 0 0 14px;
+}
+.popup-cat-bar.public { background: var(--water-mid); }
+.popup-cat-bar.shop   { background: var(--green); }
+.popup-cat-bar.byoc   { background: var(--gold); }
+
+.popup-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+}
+.popup-address { font-size: 11px; color: var(--text-light); margin-bottom: 10px; }
+
+.popup-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.popup-tag {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid;
+}
+
+.popup-row {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-mid);
+  margin-bottom: 5px;
+  align-items: flex-start;
+}
+.popup-row .icon { flex-shrink: 0; }
+
+.popup-review-notice {
+  background: #fff3f3;
+  border: 1px solid #ffd0d0;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ─── CUSTOM MARKERS ─── */
+.custom-marker {
+  width: 36px; height: 36px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  border: 2.5px solid white;
+  transition: transform 0.15s;
+}
+.custom-marker .inner {
+  transform: rotate(45deg);
+  font-size: 16px;
+  line-height: 1;
+}
+.marker-public { background: var(--water-mid); }
+.marker-shop   { background: var(--green); }
+.marker-byoc   { background: var(--gold); }
+.marker-review { background: var(--accent); opacity: 0.85; }
+
+/* ─── LEGEND ─── */
+.map-legend {
+  position: absolute;
+  bottom: 24px;
+  left: 16px;
+  z-index: 1000;
+  background: white;
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-mid);
+  border: 1px solid var(--water-pale);
+}
+.legend-title { font-size: 11px; color: var(--text-light); margin-bottom: 8px; font-weight: 500; }
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-mid);
+  margin-bottom: 5px;
+}
+.legend-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── DETAIL PANEL ─── */
+.detail-panel {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: white;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: 0 -4px 30px rgba(0,119,182,0.2);
+  z-index: 1001;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  max-height: 60vh;
+  overflow-y: auto;
+  display: none;
+}
+.detail-panel.open { transform: translateY(0); }
+
+/* ─── LOADING ─── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--water-foam);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.5s;
+}
+.loading-wave {
+  display: flex; gap: 6px; margin-bottom: 20px;
+}
+.wave-dot {
+  width: 12px; height: 12px;
+  background: var(--water-mid);
+  border-radius: 50%;
+  animation: waveBounce 1.2s ease-in-out infinite;
+}
+.wave-dot:nth-child(2) { animation-delay: 0.2s; }
+.wave-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes waveBounce {
+  0%,100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-14px); opacity: 1; background: var(--water-deep); }
+}
+.loading-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--water-deep);
+  letter-spacing: 1px;
+}
+.loading-sub { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+
+/* ─── NOTICE BAR ─── */
+.notice-bar {
+  background: #fff3cd;
+  border-bottom: 1px solid #ffe58a;
+  padding: 7px 20px;
+  font-size: 12px;
+  color: #8a6000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ─── MOBILE ─── */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main-layout { flex-direction: column; }
+  #map { flex: 1; }
+  .detail-panel { display: block; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="loading-wave">
+    <div class="wave-dot"></div>
+    <div class="wave-dot"></div>
+    <div class="wave-dot"></div>
+  </div>
+  <div class="loading-text">💧 Refillぐんま</div>
+  <div class="loading-sub">給水スポットを読み込んでいます…</div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-area">
+    <div class="logo-icon">💧</div>
+    <div class="logo-text">
+      <div class="main">Refill ぐんま</div>
+      <div class="sub">GUNMA REFILL MAP</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-header" onclick="locateMe()">📍 現在地</button>
+    <a href="register.html" class="btn-header primary">＋ スポット登録</a>
+  </div>
+</header>
+
+<!-- NOTICE (再調査アラート用) -->
+<div class="notice-bar" id="noticeBar" style="display:none">
+  ⚠️ <strong id="reviewCount">0</strong>件のスポットが再調査の時期です。情報をご確認ください。
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-pill all active" data-filter="all" onclick="setFilter('all', this)">
+    <span class="stat-icon">🗺️</span>
+    <span class="stat-label">全スポット</span>
+    <span class="stat-count" id="cnt-all">0</span>
+  </div>
+  <div class="stat-pill public-water" data-filter="public" onclick="setFilter('public', this)">
+    <span class="stat-icon">🚰</span>
+    <span class="stat-label">公共給水</span>
+    <span class="stat-count" id="cnt-public">0</span>
+  </div>
+  <div class="stat-pill shop" data-filter="shop" onclick="setFilter('shop', this)">
+    <span class="stat-icon">🏪</span>
+    <span class="stat-label">協力店舗</span>
+    <span class="stat-count" id="cnt-shop">0</span>
+  </div>
+  <div class="stat-pill byoc" data-filter="byoc" onclick="setFilter('byoc', this)">
+    <span class="stat-icon">🧴</span>
+    <span class="stat-label">BYOC</span>
+    <span class="stat-count" id="cnt-byoc">0</span>
+  </div>
+  <div class="stat-pill review" data-filter="review" onclick="setFilter('review', this)">
+    <span class="stat-icon">⚠️</span>
+    <span class="stat-label">要確認</span>
+    <span class="stat-count" id="cnt-review">0</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main-layout">
+  <div id="map"></div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h3>📋 スポット一覧</h3>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="スポット名・住所で検索…" oninput="searchSpots(this.value)">
+        <span class="search-icon">🔍</span>
+      </div>
+    </div>
+    <div class="spot-list" id="spotList"></div>
+  </div>
+</div>
+
+<!-- MAP LEGEND -->
+<div class="map-legend" id="mapLegend">
+  <div class="legend-title">凡例</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--water-mid)"></div>公共給水スポット</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>協力店舗（給水）</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>BYOC対応店舗</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>要再調査スポット</div>
+</div>
+
+<!-- MOBILE DETAIL PANEL -->
+<div class="detail-panel" id="detailPanel"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  設定
+// ══════════════════════════════════════════════
+const CONFIG = {
+  // Google SpreadsheetのCSV公開URL (GASのウェブアプリURLまたは公開CSVリンク)
+  // 実際の運用時はこのURLを設定してください
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbwV9S-MwnYlc8veDVpy0MoBiyDKEiwevX0JdJKOiQTnQ_J8HeSPmNps0lcMhL5sumLkIw/exec',  // ★ デプロイ後に設定
+  USE_DEMO_DATA: false,  // GAS設定前はtrue、本番運用時はfalse
+  REVIEW_YEARS: 3,       // 再調査が必要な年数
+  MAP_CENTER: [36.39, 139.06],  // 群馬県中心
+  MAP_ZOOM: 10,
+};
+
+// ══════════════════════════════════════════════
+//  デモデータ
+// ══════════════════════════════════════════════
+const DEMO_SPOTS = [
+  {
+    id: '1', name: '前橋中央公園 給水所', category: 'public',
+    address: '群馬県前橋市大手町3丁目', lat: 36.3915, lng: 139.0607,
+    water_type: '水道水（無料）', description: '公園内の給水蛇口。年中利用可能。',
+    hours: '終日', closed_days: 'なし', byoc: false,
+    registered: '2022-04-01', contact: '', phone: '',
+  },
+  {
+    id: '2', name: '前橋市役所 ウォーターサーバー', category: 'public',
+    address: '群馬県前橋市大手町2-12-1', lat: 36.3897, lng: 139.0625,
+    water_type: '浄水（無料）', description: '市役所1Fロビー設置。',
+    hours: '8:30〜17:15', closed_days: '土日祝', byoc: false,
+    registered: '2021-06-15', contact: '', phone: '',
+  },
+  {
+    id: '3', name: 'カフェ Slow Water', category: 'shop',
+    address: '群馬県前橋市本町1丁目', lat: 36.3930, lng: 139.0640,
+    water_type: '浄水（無料）', description: 'マイボトルへの給水サービス。購入不要。',
+    hours: '9:00〜18:00', closed_days: '月曜日', byoc: false,
+    registered: '2023-01-20', contact: 'slowwater@example.com', phone: '027-XXX-XXXX',
+  },
+  {
+    id: '4', name: 'ナチュラルショップ みどり', category: 'byoc',
+    address: '群馬県高崎市連雀町123', lat: 36.3219, lng: 139.0029,
+    water_type: '浄水（無料）＋マイ容器販売', description: 'マイ容器持参でドリンク・総菜の量り売りに対応。',
+    hours: '10:00〜19:00', closed_days: '水曜日', byoc: true,
+    registered: '2022-11-05', contact: '', phone: '027-YYY-YYYY',
+  },
+  {
+    id: '5', name: '高崎駅前 給水機', category: 'public',
+    address: '群馬県高崎市八島町1-1', lat: 36.3232, lng: 139.0039,
+    water_type: '水道水（無料）', description: '駅東口広場設置の屋外給水機。',
+    hours: '終日', closed_days: 'なし', byoc: false,
+    registered: '2020-09-30', contact: '', phone: '',
+  },
+  {
+    id: '6', name: '伊香保温泉 旅館みずたま', category: 'shop',
+    address: '群馬県渋川市伊香保町', lat: 36.5253, lng: 138.9960,
+    water_type: '湧き水（無料）', description: '旅館前の湧き水スポット。立ち寄り自由。',
+    hours: '8:00〜20:00', closed_days: '不定休', byoc: false,
+    registered: '2021-03-12', contact: '', phone: '',
+  },
+  {
+    id: '7', name: '群馬県庁 展望台ロビー', category: 'public',
+    address: '群馬県前橋市大手町1-1-1', lat: 36.3905, lng: 139.0587,
+    water_type: '浄水（無料）', description: '展望台入口付近に設置。',
+    hours: '10:00〜18:00', closed_days: '月曜日', byoc: false,
+    registered: '2019-07-01', contact: '', phone: '',
+  },
+  {
+    id: '8', name: 'オーガニックカフェ 土と水', category: 'byoc',
+    address: '群馬県桐生市本町2丁目', lat: 36.4107, lng: 139.3311,
+    water_type: 'コーヒー・スムージー（マイ容器割引）', description: 'マイタンブラー持参で30円引き。給水も無料提供。',
+    hours: '9:00〜17:00', closed_days: '火・水曜日', byoc: true,
+    registered: '2023-05-18', contact: '', phone: '',
+  },
+];
+
+// ══════════════════════════════════════════════
+//  状態
+// ══════════════════════════════════════════════
+let allSpots = [];
+let filteredSpots = [];
+let currentFilter = 'all';
+let markers = {};
+let map;
+let selectedId = null;
+
+// ══════════════════════════════════════════════
+//  地図初期化
+// ══════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView(CONFIG.MAP_CENTER, CONFIG.MAP_ZOOM);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  // 凡例の位置をLeafletに追加
+  const legend = document.getElementById('mapLegend');
+  map.getContainer().appendChild(legend);
+}
+
+// ══════════════════════════════════════════════
+//  マーカー作成
+// ══════════════════════════════════════════════
+function getMarkerClass(spot) {
+  if (needsReview(spot)) return 'marker-review';
+  const cls = { public: 'marker-public', shop: 'marker-shop', byoc: 'marker-byoc' };
+  return cls[spot.category] || 'marker-public';
+}
+
+function getCategoryIcon(cat) {
+  return { public: '🚰', shop: '🏪', byoc: '🧴' }[cat] || '💧';
+}
+
+function needsReview(spot) {
+  // 再調査日(reviewed)があればそちらを起算点とする。なければ登録日(registered)を使用。
+  const base = spot.reviewed || spot.registered;
+  if (!base) return false;
+  const baseDate = new Date(base);
+  if (isNaN(baseDate)) return false;
+  const limit = new Date(baseDate);
+  limit.setFullYear(limit.getFullYear() + CONFIG.REVIEW_YEARS);
+  return new Date() >= limit;
+}
+
+function createMarkerIcon(spot) {
+  const cls = getMarkerClass(spot);
+  const icon = getCategoryIcon(spot.category);
+  return L.divIcon({
+    className: '',
+    html: `<div class="custom-marker ${cls}"><span class="inner">${icon}</span></div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 36],
+    popupAnchor: [0, -38],
+  });
+}
+
+function buildPopupHTML(spot) {
+  const rev = needsReview(spot);
+  const catClass = { public: 'public', shop: 'shop', byoc: 'byoc' }[spot.category] || 'public';
+  const catName  = { public: '公共給水', shop: '協力店舗', byoc: 'BYOC対応' }[spot.category] || '';
+  const tagColor = { public: 'color:#0077B6;border-color:#90E0EF;background:#d0eeff',
+                     shop:   'color:#1a7a50;border-color:#a8e6c8;background:#d5f5e8',
+                     byoc:   'color:#9a6000;border-color:#ffd97d;background:#fff3cd' }[spot.category] || '';
+
+  let html = `<div class="popup-cat-bar ${catClass}"></div>
+    <div class="popup-inner">
+      <div class="popup-tags">
+        <span class="popup-tag" style="${tagColor}">${catName}</span>
+        ${spot.byoc ? '<span class="popup-tag" style="color:#9a6000;border-color:#ffd97d;background:#fff3cd">🧴 BYOC</span>' : ''}
+      </div>
+      <div class="popup-title">${spot.name}</div>
+      <div class="popup-address">📍 ${spot.address}</div>`;
+
+  if (spot.water_type) {
+    html += `<div class="popup-row"><span class="icon">💧</span><span>${spot.water_type}</span></div>`;
+  }
+  if (spot.hours && spot.category !== 'public') {
+    html += `<div class="popup-row"><span class="icon">🕐</span><span>${spot.hours}</span></div>`;
+  }
+  if (spot.closed_days && spot.category !== 'public') {
+    html += `<div class="popup-row"><span class="icon">📅</span><span>定休日：${spot.closed_days}</span></div>`;
+  }
+  if (spot.description) {
+    html += `<div class="popup-row"><span class="icon">📝</span><span>${spot.description}</span></div>`;
+  }
+  if (rev) {
+    html += `<div class="popup-review-notice">⚠️ 登録から${CONFIG.REVIEW_YEARS}年以上が経過しています。情報の再確認をお願いします。</div>`;
+  }
+  const regDate = spot.registered ? `登録日: ${spot.registered}` : '';
+  const revDate = spot.reviewed   ? ` ／ 最終確認: ${spot.reviewed}` : '';
+  html += `<div style="font-size:10px;color:var(--text-light);margin-top:8px;">${regDate}${revDate}</div>`;
+  html += `</div>`;
+  return html;
+}
+
+function addMarkerToMap(spot) {
+  const marker = L.marker([spot.lat, spot.lng], { icon: createMarkerIcon(spot) });
+  marker.bindPopup(buildPopupHTML(spot), { maxWidth: 280, minWidth: 260 });
+  marker.on('click', () => selectSpot(spot.id));
+  markers[spot.id] = marker;
+  return marker;
+}
+
+// ══════════════════════════════════════════════
+//  データ読み込み
+// ══════════════════════════════════════════════
+async function loadSpots() {
+  if (CONFIG.USE_DEMO_DATA) {
+    return DEMO_SPOTS;
+  }
+  try {
+    // GASはリダイレクトを経由するため redirect:'follow' を明示する
+    // mode:'cors' のままだとリダイレクト先でCORSエラーになるケースがあるため
+    // credentials:'omit' も併せて指定してシンプルなリクエストにする
+    const res = await fetch(CONFIG.GAS_URL + '?action=getSpots', {
+      method: 'GET',
+      redirect: 'follow',
+    });
+
+    if (!res.ok) {
+      console.warn('GASレスポンスエラー:', res.status);
+      return DEMO_SPOTS;
+    }
+
+    const text = await res.text();           // 先にテキストで受け取り
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch(parseErr) {
+      console.warn('JSONパースエラー (GASがHTMLを返した可能性):', text.slice(0, 200));
+      return DEMO_SPOTS;
+    }
+
+    const hasSpots = Array.isArray(data.spots);
+    if (!data || (!hasSpots && data.status !== 'ok')) {
+      console.warn('GASエラー応答:', data);
+      return DEMO_SPOTS;
+    }
+
+    // deleted=TRUE のスポットを除外
+    return (data.spots || []).filter(s => s.deleted !== 'TRUE' && s.deleted !== 'true');
+
+  } catch(e) {
+    console.error('データ取得エラー:', e);
+    return DEMO_SPOTS; // fallback
+  }
+}
+
+function countSpots(spots) {
+  const counts = { all: spots.length, public: 0, shop: 0, byoc: 0, review: 0 };
+  spots.forEach(s => {
+    if (s.category === 'public') counts.public++;
+    if (s.category === 'shop')   counts.shop++;
+    if (s.category === 'byoc')   counts.byoc++;
+    if (needsReview(s))          counts.review++;
+  });
+  return counts;
+}
+
+function updateCounts(counts) {
+  Object.keys(counts).forEach(k => {
+    const el = document.getElementById(`cnt-${k}`);
+    if (el) el.textContent = counts[k];
+  });
+  if (counts.review > 0) {
+    document.getElementById('noticeBar').style.display = 'flex';
+    document.getElementById('reviewCount').textContent = counts.review;
+  }
+}
+
+// ══════════════════════════════════════════════
+//  フィルタ
+// ══════════════════════════════════════════════
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.stat-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  let spots = allSpots;
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  if (currentFilter === 'review') {
+    spots = spots.filter(s => needsReview(s));
+  } else if (currentFilter !== 'all') {
+    spots = spots.filter(s => s.category === currentFilter);
+  }
+
+  if (q) {
+    spots = spots.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      (s.address||'').toLowerCase().includes(q)
+    );
+  }
+
+  filteredSpots = spots;
+  updateMarkers();
+  renderList();
+}
+
+function searchSpots(q) { applyFilter(); }
+
+// ══════════════════════════════════════════════
+//  マーカー更新
+// ══════════════════════════════════════════════
+let markerLayer = null;
+function updateMarkers() {
+  if (markerLayer) { map.removeLayer(markerLayer); }
+  markerLayer = L.layerGroup();
+  filteredSpots.forEach(s => {
+    const m = addMarkerToMap(s);
+    markerLayer.addLayer(m);
+  });
+  markerLayer.addTo(map);
+}
+
+// ══════════════════════════════════════════════
+//  サイドバーリスト
+// ══════════════════════════════════════════════
+function renderList() {
+  const list = document.getElementById('spotList');
+  if (filteredSpots.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-light);font-size:13px;">スポットが見つかりません</div>`;
+    return;
+  }
+  list.innerHTML = filteredSpots.map(s => {
+    const rev = needsReview(s);
+    const badgeCls = { public:'badge-public', shop:'badge-shop', byoc:'badge-byoc' }[s.category] || 'badge-public';
+    const tagCls   = { public:'tag-public', shop:'tag-shop', byoc:'tag-byoc' }[s.category] || 'tag-public';
+    const catName  = { public:'公共給水', shop:'協力店舗', byoc:'BYOC対応' }[s.category] || '';
+    return `
+    <div class="spot-card ${selectedId===s.id?'selected':''}" onclick="selectSpot('${s.id}')">
+      <div class="spot-card-header">
+        <div class="spot-badge ${badgeCls}">${getCategoryIcon(s.category)}</div>
+        <div class="spot-name">${s.name}</div>
+        <span class="spot-type-tag ${tagCls}">${catName}</span>
+      </div>
+      <div class="spot-address">${s.address}</div>
+      ${rev ? `<div class="spot-review-badge">⚠️ 再調査の時期です</div>` : ''}
+      ${!rev && s.reviewed ? `<div style="font-size:10px;color:var(--green);margin-left:42px;margin-top:2px;">✅ 確認済: ${s.reviewed}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectSpot(id) {
+  selectedId = id;
+  renderList();
+  const spot = allSpots.find(s => s.id === id);
+  if (!spot) return;
+  map.setView([spot.lat, spot.lng], 15, { animate: true });
+  const m = markers[id];
+  if (m) { m.openPopup(); }
+  // モバイル: detailPanel
+  showDetailPanel(spot);
+}
+
+function showDetailPanel(spot) {
+  const panel = document.getElementById('detailPanel');
+  if (!panel) return;
+  panel.innerHTML = `<div style="padding:20px">${buildPopupHTML(spot)}</div>
+    <button onclick="document.getElementById('detailPanel').classList.remove('open')"
+      style="position:absolute;top:12px;right:12px;background:var(--water-pale);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px">✕</button>`;
+  panel.classList.add('open');
+}
+
+// ══════════════════════════════════════════════
+//  現在地
+// ══════════════════════════════════════════════
+function locateMe() {
+  if (!navigator.geolocation) { alert('位置情報がサポートされていません'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+    L.circleMarker([pos.coords.latitude, pos.coords.longitude], {
+      radius: 10, color: '#0077B6', fillColor: '#90E0EF', fillOpacity: 0.7
+    }).addTo(map).bindPopup('現在地').openPopup();
+  }, () => alert('位置情報を取得できませんでした'));
+}
+
+// ══════════════════════════════════════════════
+//  初期化
+// ══════════════════════════════════════════════
+async function init() {
+  const lo = document.getElementById('loading');
+
+  // ★ try-finally で例外が起きても必ずローディングを非表示にする
+  try {
+    initMap();
+
+    allSpots = await loadSpots();
+    filteredSpots = allSpots;
+
+    const counts = countSpots(allSpots);
+    updateCounts(counts);
+    updateMarkers();
+    renderList();
+
+  } catch(e) {
+    // 予期しないエラーが起きてもローディングは消してマップを表示する
+    console.error('初期化エラー:', e);
+    document.getElementById('loading').querySelector('.loading-sub').textContent =
+      'データの読み込みに失敗しました。ページを再読み込みしてください。';
+  } finally {
+    // 成功・失敗にかかわらずローディングを必ず非表示
+    lo.style.opacity = '0';
+    setTimeout(() => lo.style.display = 'none', 500);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

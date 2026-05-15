@@ -1,166 +1,1217 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refillぐんま 収集アプリ</title>
-    <style>
-        :root { --refill-blue: #87CEEB; --dark-blue: #5f9ea0; }
-        body { font-family: sans-serif; margin: 0; background-color: #f0f8ff; color: #333; }
-        .header { background: var(--refill-blue); color: white; padding: 15px; text-align: center; font-weight: bold; }
-        .container { padding: 20px; max-width: 500px; margin: auto; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-size: 0.9em; font-weight: bold; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        .btn { background: var(--refill-blue); color: white; border: none; padding: 12px; border-radius: 5px; width: 100%; font-size: 1em; cursor: pointer; margin-top: 10px; }
-        .btn:active { background: var(--dark-blue); }
-        .btn-secondary { background: #999; margin-top: 5px; }
-        #status { margin-top: 15px; padding: 10px; border-radius: 5px; display: none; text-align: center; }
-        .location-box { background: #fff; border: 1px dashed var(--refill-blue); padding: 10px; margin-bottom: 10px; font-size: 0.8em; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>給水スポット登録 | Refillぐんま</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root {
+  --water-deep: #0077B6;
+  --water-mid:  #00B4D8;
+  --water-light:#90E0EF;
+  --water-pale: #CAF0F8;
+  --water-foam: #EAF8FD;
+  --accent:     #FF6B6B;
+  --gold:       #FFB703;
+  --green:      #52B788;
+  --text-dark:  #023E58;
+  --text-mid:   #4A7A8A;
+  --text-light: #8AAABB;
+  --white:      #FFFFFF;
+  --shadow-soft: 0 4px 20px rgba(0,119,182,0.15);
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Noto Sans JP',sans-serif;
+  background:var(--water-foam);
+  color:var(--text-dark);
+  min-height:100vh;
+}
+
+header{
+  background:linear-gradient(135deg,var(--water-deep) 0%,var(--water-mid) 100%);
+  padding:12px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 2px 16px rgba(0,119,182,0.35);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+.logo{font-family:'Outfit',sans-serif;color:white;}
+.logo .main{font-size:18px;font-weight:800;}
+.logo .sub{font-size:10px;font-weight:300;opacity:.85;letter-spacing:1px;}
+.btn-back{
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.35);
+  color:white;
+  padding:7px 14px;
+  border-radius:20px;
+  font-size:12px;
+  font-family:'Noto Sans JP',sans-serif;
+  cursor:pointer;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+
+/* AUTH SCREEN */
+.auth-screen{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(135deg,var(--water-deep) 0%,var(--water-mid) 100%);
+}
+.auth-card{
+  background:white;
+  border-radius:var(--r-lg);
+  padding:40px 36px;
+  width:100%;
+  max-width:380px;
+  box-shadow:0 20px 60px rgba(0,50,80,.3);
+  text-align:center;
+}
+.auth-icon{font-size:48px;margin-bottom:16px;}
+.auth-title{
+  font-family:'Outfit',sans-serif;
+  font-size:24px;
+  font-weight:800;
+  color:var(--water-deep);
+  margin-bottom:6px;
+}
+.auth-subtitle{font-size:13px;color:var(--text-light);margin-bottom:28px;}
+.auth-input{
+  width:100%;
+  padding:12px 16px;
+  border:2px solid var(--water-light);
+  border-radius:var(--r-sm);
+  font-size:15px;
+  font-family:'Noto Sans JP',sans-serif;
+  margin-bottom:16px;
+  outline:none;
+  transition:border-color .2s;
+  text-align:center;
+  letter-spacing:3px;
+}
+.auth-input:focus{border-color:var(--water-mid);}
+.auth-btn{
+  width:100%;
+  padding:13px;
+  background:linear-gradient(135deg,var(--water-deep),var(--water-mid));
+  color:white;
+  border:none;
+  border-radius:var(--r-sm);
+  font-size:15px;
+  font-weight:700;
+  font-family:'Noto Sans JP',sans-serif;
+  cursor:pointer;
+  transition:all .2s;
+}
+.auth-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,119,182,.4);}
+.auth-error{color:var(--accent);font-size:12px;margin-top:10px;}
+
+/* FORM CONTAINER */
+.form-container{
+  max-width:720px;
+  margin:0 auto;
+  padding:24px 20px 60px;
+}
+
+.form-card{
+  background:white;
+  border-radius:var(--r-lg);
+  padding:28px;
+  box-shadow:var(--shadow-soft);
+  margin-bottom:20px;
+  border:1px solid var(--water-pale);
+}
+
+.form-card-title{
+  font-family:'Outfit',sans-serif;
+  font-size:16px;
+  font-weight:800;
+  color:var(--water-deep);
+  margin-bottom:20px;
+  padding-bottom:12px;
+  border-bottom:2px solid var(--water-pale);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.form-group{
+  margin-bottom:18px;
+}
+label{
+  display:block;
+  font-size:13px;
+  font-weight:700;
+  color:var(--text-mid);
+  margin-bottom:6px;
+}
+label .required{
+  color:var(--accent);
+  margin-left:3px;
+  font-size:11px;
+}
+
+input[type=text],input[type=email],input[type=tel],
+select,textarea{
+  width:100%;
+  padding:10px 13px;
+  border:1.5px solid var(--water-light);
+  border-radius:var(--r-sm);
+  font-size:14px;
+  font-family:'Noto Sans JP',sans-serif;
+  color:var(--text-dark);
+  background:var(--water-foam);
+  outline:none;
+  transition:border-color .2s,background .2s;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--water-mid);
+  background:white;
+}
+textarea{resize:vertical;min-height:80px;}
+
+/* CATEGORY SELECTOR */
+.cat-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.cat-btn{
+  border:2px solid var(--water-light);
+  border-radius:var(--r-md);
+  padding:14px 10px;
+  cursor:pointer;
+  text-align:center;
+  transition:all .2s;
+  background:var(--water-foam);
+}
+.cat-btn:hover{border-color:var(--water-mid);background:white;}
+.cat-btn.selected-public{border-color:var(--water-mid);background:#d0eeff;}
+.cat-btn.selected-shop  {border-color:var(--green);background:#d5f5e8;}
+.cat-btn.selected-byoc  {border-color:var(--gold);background:#fff3cd;}
+.cat-icon{font-size:28px;margin-bottom:6px;}
+.cat-name{font-size:12px;font-weight:700;color:var(--text-dark);}
+.cat-desc{font-size:10px;color:var(--text-light);margin-top:2px;}
+
+/* WEEKDAY SELECTOR */
+.weekday-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.day-btn{
+  padding:5px 12px;
+  border:1.5px solid var(--water-light);
+  border-radius:20px;
+  font-size:12px;
+  cursor:pointer;
+  background:var(--water-foam);
+  transition:all .15s;
+  color:var(--text-mid);
+}
+.day-btn.active{
+  background:var(--water-mid);
+  border-color:var(--water-mid);
+  color:white;
+  font-weight:700;
+}
+
+/* MAP PICKER */
+#locationMap{
+  height:250px;
+  border-radius:var(--r-sm);
+  border:1.5px solid var(--water-light);
+  margin-top:10px;
+}
+
+.coord-display{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+
+.loc-btn-group{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+.loc-btn{
+  flex:1;
+  padding:9px;
+  border-radius:var(--r-sm);
+  border:1.5px solid var(--water-light);
+  background:var(--water-foam);
+  font-size:12px;
+  font-family:'Noto Sans JP',sans-serif;
+  cursor:pointer;
+  transition:all .2s;
+  color:var(--text-mid);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  font-weight:500;
+}
+.loc-btn:hover{background:var(--water-pale);border-color:var(--water-mid);}
+.loc-btn.primary{
+  background:var(--water-mid);
+  border-color:var(--water-mid);
+  color:white;
+}
+.loc-btn.primary:hover{background:var(--water-deep);}
+
+/* GEOCODE SPINNER */
+.geo-status{
+  font-size:11px;
+  color:var(--text-light);
+  margin-top:6px;
+  min-height:16px;
+}
+.geo-status.ok{color:var(--green);}
+.geo-status.err{color:var(--accent);}
+
+/* SUBMIT BTN */
+.submit-btn{
+  width:100%;
+  padding:15px;
+  background:linear-gradient(135deg,var(--water-deep),var(--water-mid));
+  color:white;
+  border:none;
+  border-radius:var(--r-md);
+  font-size:16px;
+  font-weight:700;
+  font-family:'Noto Sans JP',sans-serif;
+  cursor:pointer;
+  transition:all .25s;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  box-shadow:0 4px 16px rgba(0,119,182,.35);
+}
+.submit-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,119,182,.45);}
+.submit-btn:disabled{opacity:.6;transform:none;cursor:not-allowed;}
+
+/* TOAST */
+.toast{
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%) translateY(100px);
+  background:var(--text-dark);
+  color:white;
+  padding:12px 24px;
+  border-radius:30px;
+  font-size:13px;
+  font-weight:500;
+  transition:transform .35s ease;
+  z-index:9999;
+  white-space:nowrap;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{background:var(--green);}
+.toast.error  {background:var(--accent);}
+
+/* CONDITIONAL FIELDS */
+.shop-fields{display:none;}
+.byoc-fields{display:none;}
+
+/* DIVIDER */
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+@media(max-width:600px){
+  .cat-grid{grid-template-columns:1fr 1fr;}
+  .field-row{grid-template-columns:1fr;}
+  .coord-display{grid-template-columns:1fr;}
+}
+
+/* ─── モード切替バナー ─── */
+.mode-banner {
+  margin-bottom: 20px;
+  border-radius: var(--r-md);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  display: none;
+}
+.mode-banner.edit-mode {
+  background: linear-gradient(135deg,#fff3cd,#ffe8a0);
+  border: 2px solid var(--gold);
+  color: #7a5000;
+}
+.mode-banner.delete-mode {
+  background: linear-gradient(135deg,#fff0f0,#ffd0d0);
+  border: 2px solid var(--accent);
+  color: #8a0000;
+}
+
+/* ─── スポット一覧パネル（ログイン後に表示）─── */
+.spot-search-panel {
+  background: white;
+  border-radius: var(--r-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 20px;
+  border: 1px solid var(--water-pale);
+}
+.spot-search-panel h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--water-deep);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.spot-search-box {
+  position: relative;
+  margin-bottom: 12px;
+}
+.spot-search-box input {
+  width: 100%;
+  padding: 10px 38px 10px 13px;
+  border: 1.5px solid var(--water-light);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--water-foam);
+  color: var(--text-dark);
+  outline: none;
+  transition: border-color .2s;
+}
+.spot-search-box input:focus { border-color: var(--water-mid); background: white; }
+.spot-search-box .s-icon { position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--text-light); }
+
+.spot-list-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--water-pale);
+  border-radius: var(--r-sm);
+}
+.spot-list-scroll::-webkit-scrollbar { width: 4px; }
+.spot-list-scroll::-webkit-scrollbar-thumb { background: var(--water-light); border-radius: 2px; }
+
+.spot-list-item {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--water-pale);
+  cursor: pointer;
+  transition: background .15s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.spot-list-item:last-child { border-bottom: none; }
+.spot-list-item:hover { background: var(--water-foam); }
+.spot-list-item.review-due { background: #fff8e0; }
+.spot-list-item.review-due:hover { background: #fff0b0; }
+.spot-item-icon { font-size: 18px; flex-shrink:0; }
+.spot-item-body { flex:1; min-width:0; }
+.spot-item-name { font-size: 13px; font-weight: 700; color: var(--text-dark); white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.spot-item-meta { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+.spot-item-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+.badge-review { background:#fff0a0;color:#8a6000;border:1px solid #ffd700; }
+.badge-normal { background:var(--water-pale);color:var(--water-deep);border:1px solid var(--water-light); }
+
+.new-spot-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  background: var(--water-foam);
+  border: 2px dashed var(--water-mid);
+  border-radius: var(--r-sm);
+  color: var(--water-deep);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  transition: all .2s;
+}
+.new-spot-btn:hover { background: var(--water-pale); }
+
+/* ─── 削除ボタン ─── */
+.delete-zone {
+  background: white;
+  border-radius: var(--r-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 20px;
+  border: 2px solid var(--accent);
+  display: none;
+}
+.delete-zone-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.delete-zone p {
+  font-size: 12px;
+  color: var(--text-mid);
+  margin-bottom: 14px;
+  line-height: 1.7;
+}
+.delete-btn {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg,#ff6b6b,#ee3355);
+  color: white;
+  border: none;
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(255,80,80,.35);
+}
+.delete-btn:hover { transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,80,80,.45); }
+.delete-btn:disabled { opacity:.6;transform:none;cursor:not-allowed; }
+
+/* ─── ボタン列（更新 / 新規登録）─── */
+.action-btns { display:flex; gap:10px; }
+.action-btns .submit-btn { flex:1; }
+.cancel-edit-btn {
+  padding: 15px 18px;
+  background: var(--water-foam);
+  border: 2px solid var(--water-light);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Noto Sans JP', sans-serif;
+  color: var(--text-mid);
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.cancel-edit-btn:hover { background:var(--water-pale);border-color:var(--water-mid); }
+
+</style>
 </head>
 <body>
 
-<div class="header">Refillぐんま データ収集</div>
-
-<div class="container">
-    <div class="form-group">
-        <label>パスワード</label>
-        <input type="password" id="password" placeholder="管理用パスワードを入力">
-    </div>
-
-    <hr>
-
-    <div class="form-group">
-        <label>カテゴリー</label>
-        <select id="category">
-            <option value="公共">公共施設の給水所</option>
-            <option value="飲食店">飲食店（協力店）</option>
-            <option value="協力店">マイ容器協力店</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>スポット名</label>
-        <input type="text" id="name" placeholder="例：〇〇公園、△△カフェ">
-    </div>
-
-    <div class="form-group">
-        <label>住所</label>
-        <input type="text" id="address" placeholder="群馬県前橋市...">
-        <button class="btn btn-secondary" onclick="addressMatching()">住所から座標を取得</button>
-    </div>
-
-    <div class="location-box">
-        座標: <span id="latlng_display">未取得</span>
-        <button class="btn btn-secondary" style="width: auto; padding: 5px 10px;" onclick="getGPS()">現在地(GPS)を取得</button>
-    </div>
-
-    <div class="form-group">
-        <label>利用可能時間 / 営業時間</label>
-        <input type="text" id="hours" placeholder="例：9:00 - 17:00">
-    </div>
-
-    <div class="form-group">
-        <label>定休日</label>
-        <input type="text" id="closed" placeholder="例：月曜日、第3日曜日">
-    </div>
-
-    <div class="form-group">
-        <label>お水の提供方法</label>
-        <select id="method">
-            <option value="蛇口">蛇口（直接）</option>
-            <option value="常温サーバー">常温サーバー</option>
-            <option value="冷水機">冷水機</option>
-            <option value="スタッフによる提供">スタッフによる提供</option>
-        </select>
-    </div>
-
-    <button class="btn" onclick="submitToGas()">Refill Japan形式で登録</button>
-    <div id="status"></div>
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-icon">💧</div>
+    <div class="auth-title">Refillぐんま</div>
+    <div class="auth-subtitle">スポット登録にはパスワードが必要です</div>
+    <input type="password" id="pwInput" class="auth-input" placeholder="パスワードを入力"
+      onkeydown="if(event.key==='Enter')checkPW()">
+    <button class="auth-btn" onclick="checkPW()">ログイン</button>
+    <div class="auth-error" id="authError"></div>
+  </div>
 </div>
 
+<!-- MAIN FORM -->
+<div id="mainContent" style="display:none">
+  <header>
+    <div class="logo">
+      <div class="main">💧 Refillぐんま</div>
+      <div class="sub">スポット登録</div>
+    </div>
+    <a href="map.html" class="btn-back">← マップへ戻る</a>
+  </header>
+
+  <div class="form-container">
+
+    <!-- スポット一覧パネル（ログイン後に表示、スポット選択で編集モードへ） -->
+    <div class="spot-search-panel" id="spotSearchPanel">
+      <h3>🔍 既存スポットを編集・確認する</h3>
+      <div class="spot-search-box">
+        <input type="text" id="spotSearchInput" placeholder="スポット名・住所で絞り込み…" oninput="filterSpotList(this.value)">
+        <span class="s-icon">🔍</span>
+      </div>
+      <div class="spot-list-scroll" id="spotListScroll">
+        <div style="padding:20px;text-align:center;color:var(--text-light);font-size:13px;">スポット一覧を読み込み中…</div>
+      </div>
+      <button class="new-spot-btn" onclick="startNewMode()">＋ 新しいスポットを登録する</button>
+    </div>
+
+    <!-- モード切替バナー -->
+    <div class="mode-banner edit-mode" id="editBanner">
+      ✏️ <span id="editBannerText">編集モード</span>
+    </div>
+
+    <!-- CATEGORY -->
+    <div class="form-card">
+      <div class="form-card-title">📂 スポットの種類<span style="color:var(--accent);font-size:12px"> *必須</span></div>
+      <div class="cat-grid">
+        <div class="cat-btn" id="cat-public" onclick="selectCat('public')">
+          <div class="cat-icon">🚰</div>
+          <div class="cat-name">公共給水</div>
+          <div class="cat-desc">公園・役所など</div>
+        </div>
+        <div class="cat-btn" id="cat-shop" onclick="selectCat('shop')">
+          <div class="cat-icon">🏪</div>
+          <div class="cat-name">協力店舗</div>
+          <div class="cat-desc">飲食店・カフェ等</div>
+        </div>
+        <div class="cat-btn" id="cat-byoc" onclick="selectCat('byoc')">
+          <div class="cat-icon">🧴</div>
+          <div class="cat-name">BYOC対応</div>
+          <div class="cat-desc">マイ容器持参歓迎</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BASIC INFO -->
+    <div class="form-card">
+      <div class="form-card-title">📝 基本情報</div>
+
+      <div class="form-group">
+        <label>スポット名<span class="required">*</span></label>
+        <input type="text" id="f_name" placeholder="例：前橋中央公園 給水スポット" maxlength="80">
+      </div>
+
+      <div class="form-group">
+        <label>お水の提供方法<span class="required">*</span></label>
+        <select id="f_water_type">
+          <option value="">選択してください</option>
+          <option value="水道水（無料）">🚰 水道水（無料）</option>
+          <option value="浄水（無料）">💧 浄水（無料）</option>
+          <option value="湧き水（無料）">🌊 湧き水（無料）</option>
+          <option value="ウォーターサーバー（無料）">🏧 ウォーターサーバー（無料）</option>
+          <option value="ドリンク提供（マイ容器割引）">☕ ドリンク提供（マイ容器割引）</option>
+          <option value="量り売り（マイ容器対応）">⚖️ 量り売り（マイ容器対応）</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>スポットの説明</label>
+        <textarea id="f_description" placeholder="利用方法・特記事項など"></textarea>
+      </div>
+    </div>
+
+    <!-- SHOP FIELDS -->
+    <div class="form-card shop-fields byoc-fields" id="shopFields">
+      <div class="form-card-title">🕐 営業情報</div>
+
+      <div class="form-group field-row">
+        <div>
+          <label>営業開始時間</label>
+          <input type="text" id="f_open" placeholder="例：9:00">
+        </div>
+        <div>
+          <label>営業終了時間</label>
+          <input type="text" id="f_close" placeholder="例：18:00">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>定休日</label>
+        <div class="weekday-grid" id="closedDays">
+          <div class="day-btn" data-day="月" onclick="toggleDay(this)">月</div>
+          <div class="day-btn" data-day="火" onclick="toggleDay(this)">火</div>
+          <div class="day-btn" data-day="水" onclick="toggleDay(this)">水</div>
+          <div class="day-btn" data-day="木" onclick="toggleDay(this)">木</div>
+          <div class="day-btn" data-day="金" onclick="toggleDay(this)">金</div>
+          <div class="day-btn" data-day="土" onclick="toggleDay(this)">土</div>
+          <div class="day-btn" data-day="日" onclick="toggleDay(this)">日</div>
+          <div class="day-btn" data-day="祝" onclick="toggleDay(this)">祝</div>
+          <div class="day-btn" data-day="不定休" onclick="toggleDay(this)">不定休</div>
+          <div class="day-btn" data-day="なし" onclick="toggleDay(this)">なし</div>
+        </div>
+      </div>
+
+      <div class="form-group field-row">
+        <div>
+          <label>電話番号</label>
+          <input type="tel" id="f_phone" placeholder="027-XXX-XXXX">
+        </div>
+        <div>
+          <label>メールアドレス</label>
+          <input type="email" id="f_email" placeholder="info@example.com">
+        </div>
+      </div>
+    </div>
+
+    <!-- LOCATION -->
+    <div class="form-card">
+      <div class="form-card-title">📍 場所の情報</div>
+
+      <div class="form-group">
+        <label>住所<span class="required">*</span></label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="f_address" placeholder="群馬県前橋市大手町2-12-1" style="flex:1">
+          <button class="loc-btn" style="flex:0 0 auto;padding:10px 14px;" onclick="geocodeAddress()">
+            🔍 検索
+          </button>
+        </div>
+        <div class="geo-status" id="geoStatus"></div>
+      </div>
+
+      <div class="loc-btn-group">
+        <button class="loc-btn primary" onclick="useGPS()">📱 GPS取得</button>
+        <button class="loc-btn" onclick="resetMap()">🗺️ 地図で選択</button>
+      </div>
+
+      <div id="locationMap"></div>
+
+      <div class="coord-display">
+        <div>
+          <label style="font-size:11px">緯度 (Latitude)</label>
+          <input type="text" id="f_lat" placeholder="36.3915" readonly style="background:var(--water-foam)">
+        </div>
+        <div>
+          <label style="font-size:11px">経度 (Longitude)</label>
+          <input type="text" id="f_lng" placeholder="139.0607" readonly style="background:var(--water-foam)">
+        </div>
+      </div>
+    </div>
+
+    <!-- 削除ゾーン（編集モードのみ表示） -->
+    <div class="delete-zone" id="deleteZone">
+      <div class="delete-zone-title">🗑️ このスポットを削除申請する</div>
+      <p>
+        給水スポットや店舗が無くなっている場合は、スプレッドシートに削除フラグを立てます。<br>
+        その後、<strong>RefillJapanの担当者に削除申請</strong>を行ってください。<br>
+        ※ データはスプレッドシートに記録として残ります（物理削除はしません）。
+      </p>
+      <button class="delete-btn" id="deleteBtn" onclick="confirmDelete()">
+        🗑️ 削除フラグを立てる（RefillJapanへ削除申請）
+      </button>
+    </div>
+
+    <!-- SUBMIT / UPDATE ボタン -->
+    <div class="action-btns">
+      <button class="cancel-edit-btn" id="cancelEditBtn" onclick="cancelEdit()" style="display:none">
+        ✕ キャンセル
+      </button>
+      <button class="submit-btn" id="submitBtn" onclick="submitForm()">
+        💧 スポットを登録する
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycby8FtNm2CazLkI1JbGQ3lJ2N4STl2PxkcgPLk9LbfAgnhOl0f9y3wrEcUM24GlF4erGXw/exec'; // デプロイしたGASのURL
-    let currentLat = "";
-    let currentLng = "";
+// ══════════════════════════════
+//  設定
+// ══════════════════════════════
+const CONFIG = {
+  // ★ GASデプロイ後にここだけ設定してください ★
+  // パスワードはここに書かない → GAS側で管理（GitHub公開しても安全）
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbwV9S-MwnYlc8veDVpy0MoBiyDKEiwevX0JdJKOiQTnQ_J8HeSPmNps0lcMhL5sumLkIw/exec',
 
-    // GPS取得
-    function getGPS() {
-        if (!navigator.geolocation) return alert("GPSが使えません");
-        navigator.geolocation.getCurrentPosition(pos => {
-            currentLat = pos.coords.latitude;
-            currentLng = pos.coords.longitude;
-            document.getElementById('latlng_display').innerText = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
-        }, () => alert("位置情報の取得に失敗しました"));
+  // 群馬県デフォルト座標
+  DEFAULT_LAT: 36.39,
+  DEFAULT_LNG: 139.06,
+};
+
+// ══════════════════════════════
+//  Auth
+// ══════════════════════════════
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// パスワード認証（GAS側で照合）
+//
+// ★ なぜGAS側で照合するのか ★
+//  HTMLファイルはGitHubに公開されるのでソースを誰でも見られる。
+//  フロントエンドにパスワードを書くと丸見えになってしまう。
+//  → パスワードをGASの中にだけ書き、ブラウザからは「照合してください」
+//    とリクエストを送る方式にすることで、パスワードがソースに現れない。
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function checkPW() {
+  const val = document.getElementById('pwInput').value.trim();
+  if (!val) return;
+
+  const btn     = document.querySelector('.auth-btn');
+  const errEl   = document.getElementById('authError');
+  btn.textContent = '確認中…';
+  btn.disabled    = true;
+  errEl.textContent = '';
+
+  try {
+    const url = CONFIG.GAS_URL + '?action=auth&password=' + encodeURIComponent(val);
+    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(_) { throw new Error('GASからの応答を解析できませんでした'); }
+
+    if (data.status === 'ok') {
+      // 認証成功 → セッションに記録してフォームを表示
+      sessionStorage.setItem('refill_auth', data.token);
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'block';
+      initLocationMap();
+      loadSpotList();     // ★ ログイン後にスポット一覧を取得して表示
+    } else {
+      errEl.textContent = 'パスワードが違います。';
+      document.getElementById('pwInput').value = '';
+      document.getElementById('pwInput').focus();
+      btn.textContent = 'ログイン';
+      btn.disabled    = false;
     }
+  } catch (e) {
+    errEl.textContent = '通信エラーが発生しました。GAS URLを確認してください。';
+    btn.textContent = 'ログイン';
+    btn.disabled    = false;
+  }
+}
 
-    // 東京大学CSIS アドレスマッチングAPIの利用
-    async function addressMatching() {
-        const addr = document.getElementById('address').value;
-        if (!addr) return alert("住所を入力してください");
-        
-        try {
-            // 注意: 実際にはCORS回避のためGAS経由で叩くか、プロキシを通すのが一般的です
-            const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(addr)}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            
-            if (data && data.length > 0) {
-                currentLng = data[0].geometry.coordinates[0];
-                currentLat = data[0].geometry.coordinates[1];
-                document.getElementById('latlng_display').innerText = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)} (住所から取得)`;
-            } else {
-                alert("住所が見つかりませんでした");
-            }
-        } catch (e) {
-            alert("エラーが発生しました。手動でGPS取得を試してください。");
+// ══════════════════════════════
+//  カテゴリ選択
+// ══════════════════════════════
+let selectedCategory = '';
+function selectCat(cat) {
+  selectedCategory = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => {
+    b.className = 'cat-btn';
+  });
+  document.getElementById(`cat-${cat}`).classList.add(`selected-${cat}`);
+
+  // 店舗フィールド表示切替
+  const shopFields = document.getElementById('shopFields');
+  if (cat === 'shop' || cat === 'byoc') {
+    shopFields.style.display = 'block';
+  } else {
+    shopFields.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════
+//  定休日
+// ══════════════════════════════
+function toggleDay(el) {
+  el.classList.toggle('active');
+}
+
+function getClosedDays() {
+  const active = [];
+  document.querySelectorAll('#closedDays .day-btn.active').forEach(b => {
+    active.push(b.dataset.day);
+  });
+  return active.length ? active.join('・') : '';
+}
+
+// ══════════════════════════════
+//  地図ピッカー
+// ══════════════════════════════
+let locMap, locMarker;
+
+function initLocationMap() {
+  locMap = L.map('locationMap').setView([CONFIG.DEFAULT_LAT, CONFIG.DEFAULT_LNG], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© OpenStreetMap contributors', maxZoom:19
+  }).addTo(locMap);
+
+  locMap.on('click', e => {
+    setMapMarker(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function setMapMarker(lat, lng) {
+  if (locMarker) locMap.removeLayer(locMarker);
+  locMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      className:'',
+      html:`<div style="background:var(--water-mid);width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:14px;">💧</div>`,
+      iconSize:[28,28], iconAnchor:[14,14]
+    })
+  }).addTo(locMap);
+  document.getElementById('f_lat').value = lat.toFixed(6);
+  document.getElementById('f_lng').value = lng.toFixed(6);
+}
+
+function resetMap() {
+  locMap.setView([CONFIG.DEFAULT_LAT, CONFIG.DEFAULT_LNG], 11);
+  showToast('地図をクリックして場所を指定してください', '');
+}
+
+// ══════════════════════════════
+//  GPS取得
+// ══════════════════════════════
+function useGPS() {
+  if (!navigator.geolocation) { showToast('位置情報をサポートしていません', 'error'); return; }
+  showToast('📱 GPS取得中…', '');
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    setMapMarker(lat, lng);
+    locMap.setView([lat, lng], 16);
+    showToast('✅ 現在地を取得しました', 'success');
+  }, () => showToast('位置情報を取得できませんでした', 'error'));
+}
+
+// ══════════════════════════════
+//  アドレスマッチング (東大CSVアドレスマッチングAPI)
+// ══════════════════════════════
+async function geocodeAddress() {
+  const addr = document.getElementById('f_address').value.trim();
+  if (!addr) { showToast('住所を入力してください', 'error'); return; }
+
+  const statusEl = document.getElementById('geoStatus');
+  statusEl.textContent = '🔍 住所を検索中…';
+  statusEl.className = 'geo-status';
+
+  try {
+    // 東京大学空間情報科学研究センター アドレスマッチングAPI
+    // CORSの制約上、GASプロキシ経由で呼び出す
+    const url = CONFIG.GAS_URL + '?action=geocode&address=' + encodeURIComponent(addr);
+    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(_) { throw new Error('GASからの応答を解析できませんでした'); }
+
+    if (data.status === 'ok' && data.lat && data.lng) {
+      setMapMarker(data.lat, data.lng);
+      locMap.setView([data.lat, data.lng], 16);
+      const src = data.source ? `（${data.source}）` : '';
+      statusEl.textContent = `✅ 座標を取得しました ${src}`;
+      if (data.normalized) {
+        statusEl.textContent += ` 正規化住所: ${data.normalized}`;
+      }
+      statusEl.className = 'geo-status ok';
+    } else {
+      throw new Error(data.message || '座標が取得できませんでした');
+    }
+  } catch(e) {
+    statusEl.textContent = '⚠️ ' + e.message + ' 地図をクリックして手動で指定してください。';
+    statusEl.className = 'geo-status err';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  モード管理
+//  mode: 'new'（新規登録） | 'edit'（既存スポット編集）
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let editMode   = 'new';   // 'new' or 'edit'
+let editSpotId = null;    // 編集中のスポットID
+let allSpotsCache = [];   // スポット一覧キャッシュ
+
+// ログイン後にスポット一覧を取得してサイドパネルに表示
+async function loadSpotList() {
+  try {
+    const res = await fetch(CONFIG.GAS_URL + '?action=getSpots', {
+      method: 'GET',
+      redirect: 'follow',
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(_) { throw new Error('JSON parse error'); }
+
+    if (data.status === 'ok') {
+      allSpotsCache = data.spots || [];
+      renderSpotList(allSpotsCache);
+    } else {
+      throw new Error(data.message || 'エラー');
+    }
+  } catch(e) {
+    document.getElementById('spotListScroll').innerHTML =
+      '<div style="padding:16px;text-align:center;color:var(--accent);font-size:12px;">⚠️ 一覧の取得に失敗しました</div>';
+  }
+}
+
+// スポット一覧をレンダリング
+function renderSpotList(spots) {
+  const el = document.getElementById('spotListScroll');
+  const REVIEW_YEARS = 3;
+  const now = new Date();
+
+  const needsReview = s => {
+    // 再調査日があればそれを基準、なければ登録日を基準
+    const base = s.reviewed || s.registered;
+    if (!base) return false;
+    const d = new Date(base);
+    if (isNaN(d)) return false;
+    const limit = new Date(d);
+    limit.setFullYear(limit.getFullYear() + REVIEW_YEARS);
+    return now >= limit;
+  };
+
+  // 再調査が必要なものを上に
+  const sorted = [...spots].sort((a, b) => {
+    const ar = needsReview(a) ? 0 : 1;
+    const br = needsReview(b) ? 0 : 1;
+    return ar - br;
+  });
+
+  if (sorted.length === 0) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:12px;">登録済みスポットはありません</div>';
+    return;
+  }
+
+  const catIcon = { public:'🚰', shop:'🏪', byoc:'🧴' };
+  el.innerHTML = sorted.map(s => {
+    const rev = needsReview(s);
+    const baseDate = s.reviewed || s.registered || '';
+    return `<div class="spot-list-item ${rev?'review-due':''}" onclick="loadSpotToForm('${s.id}')">
+      <span class="spot-item-icon">${catIcon[s.category]||'💧'}</span>
+      <div class="spot-item-body">
+        <div class="spot-item-name">${s.name}</div>
+        <div class="spot-item-meta">${s.address || ''}${baseDate ? ' ｜ 基準日:' + baseDate : ''}</div>
+      </div>
+      <span class="spot-item-badge ${rev?'badge-review':'badge-normal'}">${rev?'⚠️ 要確認':'正常'}</span>
+    </div>`;
+  }).join('');
+}
+
+// キーワードでフィルタ
+function filterSpotList(q) {
+  const filtered = q.trim()
+    ? allSpotsCache.filter(s =>
+        s.name.includes(q) || (s.address||'').includes(q)
+      )
+    : allSpotsCache;
+  renderSpotList(filtered);
+}
+
+// スポットを選択してフォームに読み込み（編集モード）
+function loadSpotToForm(id) {
+  const spot = allSpotsCache.find(s => s.id === id);
+  if (!spot) { showToast('スポットデータが見つかりません', 'error'); return; }
+
+  editMode   = 'edit';
+  editSpotId = id;
+
+  // フォームに値を流し込み
+  selectCat(spot.category || 'public');
+  document.getElementById('f_name').value        = spot.name || '';
+  document.getElementById('f_water_type').value  = spot.water_type || '';
+  document.getElementById('f_description').value = spot.description || '';
+  document.getElementById('f_address').value     = spot.address || '';
+  document.getElementById('f_lat').value         = spot.lat || '';
+  document.getElementById('f_lng').value         = spot.lng || '';
+  document.getElementById('f_phone').value       = spot.phone || '';
+  document.getElementById('f_email').value       = spot.email || '';
+
+  // 営業時間を開始・終了に分解
+  const hours = spot.hours || '';
+  const hParts = hours.split('〜');
+  document.getElementById('f_open').value  = hParts[0] !== '終日' ? hParts[0] : '';
+  document.getElementById('f_close').value = hParts[1] || '';
+
+  // 定休日
+  document.querySelectorAll('#closedDays .day-btn').forEach(b => {
+    b.classList.toggle('active', (spot.closed_days||'').includes(b.dataset.day));
+  });
+
+  // 地図マーカー
+  if (spot.lat && spot.lng && locMap) {
+    setMapMarker(parseFloat(spot.lat), parseFloat(spot.lng));
+    locMap.setView([parseFloat(spot.lat), parseFloat(spot.lng)], 15);
+  }
+
+  // UIを編集モードに切り替え
+  document.getElementById('editBanner').style.display  = 'flex';
+  document.getElementById('editBannerText').textContent =
+    `「${spot.name}」を編集中`;
+  document.getElementById('deleteZone').style.display   = 'block';
+  document.getElementById('cancelEditBtn').style.display = '';
+  document.getElementById('submitBtn').innerHTML         = '✏️ 情報を更新する';
+
+  // フォームまでスクロール
+  document.getElementById('editBanner').scrollIntoView({ behavior:'smooth', block:'start' });
+  showToast(`✏️ 「${spot.name}」を読み込みました`, 'success');
+}
+
+// 新規登録モードに切り替え
+function startNewMode() {
+  editMode   = 'new';
+  editSpotId = null;
+  resetForm();
+  document.getElementById('editBanner').style.display   = 'none';
+  document.getElementById('deleteZone').style.display   = 'none';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  document.getElementById('submitBtn').innerHTML         = '💧 スポットを登録する';
+  document.getElementById('editBanner').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// 編集キャンセル
+function cancelEdit() {
+  startNewMode();
+  showToast('編集をキャンセルしました', '');
+}
+
+// フォームをリセット
+function resetForm() {
+  selectedCategory = '';
+  document.querySelectorAll('.cat-btn').forEach(b => b.className = 'cat-btn');
+  document.getElementById('shopFields').style.display = 'none';
+  ['f_name','f_water_type','f_description','f_address','f_open','f_close',
+   'f_phone','f_email','f_lat','f_lng'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('#closedDays .day-btn').forEach(b => b.classList.remove('active'));
+  if (locMarker && locMap) { locMap.removeLayer(locMarker); locMarker = null; }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  削除フラグを立てる
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function confirmDelete() {
+  if (!editSpotId) return;
+  const spot = allSpotsCache.find(s => s.id === editSpotId);
+  const name = spot ? spot.name : editSpotId;
+
+  if (!confirm(`「${name}」に削除フラグを立てます。
+
+その後、RefillJapanの担当者に削除申請を行ってください。
+
+よろしいですか？`)) return;
+
+  const btn = document.getElementById('deleteBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ 処理中…';
+
+  const params = new URLSearchParams({
+    action: 'deleteSpot',
+    token:  sessionStorage.getItem('refill_auth') || '',
+    id:     editSpotId,
+  });
+
+  try {
+    const res = await fetch(CONFIG.GAS_URL + '?' + params.toString(), {
+      method: 'GET',
+      redirect: 'follow',
+    });
+
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch(_) { throw new Error('GASからの応答を解析できませんでした'); }
+
+    if (data.status === 'ok') {
+      showToast('🗑️ 削除フラグを立てました。RefillJapanに削除申請を行ってください。', 'success');
+    } else {
+      throw new Error(data.message || '削除フラグの設定に失敗しました');
+    }
+  } catch(e) {
+    showToast('❌ エラー: ' + e.message, 'error');
+  } finally {
+    // ★ 成功・失敗にかかわらず必ずボタンを戻し、一覧を更新して新規モードへ移行
+    try { await loadSpotList(); } catch(_) {}
+    setTimeout(() => startNewMode(), 2500);
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  フォーム送信（新規登録 / 更新 を自動判別）
+//  ★ POSTを使わない → GETパラメータ方式でCORSプリフライト回避 ★
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function submitForm() {
+  // バリデーション
+  const errors = [];
+  if (!selectedCategory)                                    errors.push('スポットの種類を選択してください');
+  if (!document.getElementById('f_name').value.trim())     errors.push('スポット名を入力してください');
+  if (!document.getElementById('f_water_type').value)      errors.push('お水の提供方法を選択してください');
+  if (!document.getElementById('f_address').value.trim())  errors.push('住所を入力してください');
+  if (!document.getElementById('f_lat').value)             errors.push('地図で位置を指定してください');
+  if (errors.length) { showToast('⚠️ ' + errors[0], 'error'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ 送信中…';
+
+  const openVal  = document.getElementById('f_open').value.trim();
+  const closeVal = document.getElementById('f_close').value.trim();
+  const hours    = openVal
+    ? (closeVal ? openVal + '〜' + closeVal : openVal + '〜')
+    : '終日';
+
+  // 新規登録 or 更新 の判別
+  const isEdit  = (editMode === 'edit' && editSpotId);
+  const action  = isEdit ? 'updateSpot' : 'addSpot';
+
+  const params = new URLSearchParams({
+    action:      action,
+    token:       sessionStorage.getItem('refill_auth') || '',
+    id:          isEdit ? editSpotId : String(Date.now()),
+    name:        document.getElementById('f_name').value.trim(),
+    category:    selectedCategory,
+    address:     document.getElementById('f_address').value.trim(),
+    lat:         document.getElementById('f_lat').value,
+    lng:         document.getElementById('f_lng').value,
+    water_type:  document.getElementById('f_water_type').value,
+    description: document.getElementById('f_description').value.trim(),
+    hours:       hours,
+    closed_days: getClosedDays(),
+    phone:       document.getElementById('f_phone').value.trim(),
+    email:       document.getElementById('f_email').value.trim(),
+    byoc:        String(selectedCategory === 'byoc'),
+    registered:  isEdit ? '' : new Date().toISOString().slice(0, 10),
+  });
+
+  try {
+    const res = await fetch(CONFIG.GAS_URL + '?' + params.toString(), {
+      method: 'GET',
+      redirect: 'follow',
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(_) { throw new Error('GASからの応答を解析できませんでした'); }
+
+    if (data.status === 'ok') {
+      const msg = isEdit
+        ? `✅ 更新しました（再調査日: ${data.reviewed || '本日'}）`
+        : '✅ 新規スポットを登録しました！';
+      showToast(msg, 'success');
+      await loadSpotList();          // 一覧を更新
+      setTimeout(() => {
+        if (isEdit) {
+          startNewMode();             // 編集完了→新規モードへ
+        } else {
+          window.location.href = 'map.html';
         }
+      }, 2200);
+    } else {
+      throw new Error(data.message || (isEdit ? '更新に失敗しました' : '登録に失敗しました'));
     }
+  } catch (e) {
+    showToast('❌ 送信エラー: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = isEdit ? '✏️ 情報を更新する' : '💧 スポットを登録する';
+  }
+}
 
-    // GASへ送信
-    async function submitToGas() {
-        const statusDiv = document.getElementById('status');
-        const payload = {
-            password: document.getElementById('password').value,
-            category: document.getElementById('category').value,
-            name: document.getElementById('name').value,
-            address: document.getElementById('address').value,
-            lat: currentLat,
-            lng: currentLng,
-            hours: document.getElementById('hours').value,
-            closed: document.getElementById('closed').value,
-            method: document.getElementById('method').value
-        };
-
-        if (!payload.lat || !payload.name) return alert("スポット名と位置情報は必須です");
-
-        statusDiv.style.display = "block";
-        statusDiv.innerText = "送信中...";
-        statusDiv.style.backgroundColor = "#eee";
-
-        try {
-            const response = await fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-
-            if (result.status === 'success') {
-                statusDiv.innerText = "登録完了！RefillJapanへ送信しました。";
-                statusDiv.style.backgroundColor = "#d4edda";
-                // フォームリセット
-                document.getElementById('name').value = "";
-            } else {
-                statusDiv.innerText = "エラー: " + result.message;
-                statusDiv.style.backgroundColor = "#f8d7da";
-            }
-        } catch (e) {
-            statusDiv.innerText = "通信エラーが発生しました";
-            statusDiv.style.backgroundColor = "#f8d7da";
-        }
-    }
+// ══════════════════════════════
+//  Toast
+// ══════════════════════════════
+let toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type || ''}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
 </script>
-
 </body>
 </html>
